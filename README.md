@@ -7,7 +7,9 @@ To use in robot project add the team2655 directory to the robot project's src fo
 
 ## Joystick Helper Code
 **Header:** `team2655/joystick.hpp`
+
 **Namespace:** `team2655::js`
+
 The joystick helper code is a compilation of function for using WPILib Joystick axes with applied cubic transformations. It uses a polynomial fitting routine to generate cubic functions for Joystick axes supporting multiple settings for the generate the function.
 
 Settings:
