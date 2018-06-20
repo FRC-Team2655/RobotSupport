@@ -20,7 +20,7 @@ NOTE: Deadband only mode (`getDeadbandCoefficients`) only supports the deadband 
 <details><summary>Click to expand</summary>
 <p>
 
-![Cubic Demo](./cubic-demp.png)
+![Cubic Demo](https://github.com/FRC-Team2655/RobotSupport/raw/master/cubic-demo.png)
 
 Example Code:
 
