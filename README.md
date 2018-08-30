@@ -8,42 +8,18 @@ To use in robot project add the team2655 directory to the robot project's src fo
 ## Joystick Helper Code
 **Header:** `team2655/joystick.hpp`
 
-**Namespace:** `team2655::js`
+**Namespace:** `team2655::jshelper`
 
-The joystick helper code is a compilation of function for using WPILib Joystick axes with applied cubic transformations. It uses a polynomial fitting routine to generate cubic functions for Joystick axes supporting multiple settings for the generate the function.
+**Example:** `jsexample.cpp`
+
+The joystick helper code is a compilation of functions for using WPILib Joystick axes with applied cubic transformations and deadbands. It uses a polynomial fitting routine to generate cubic functions for Joystick axes supporting multiple settings for the generate the function. It also supports simple deadbands without touching the deadband.
 
 Settings:
 - deadband: A dead zone on the joystick. The scaled value will always be zero unitl the axis is moved beyond the deadband.
 - min power: The minimum amount of power to apply in the scaled value (this will be the value after the deadband threshold is passed)
 - mid power: The amount of power that is the "controllable" or middle speed. This is (about) where the "flat" section of the cubic function will be.
 
-NOTE: Deadband only mode (`getDeadbandCoefficients`) only supports the deadband setting.
+NOTE: Deadband only mode (`createDeadbandConfig`) only supports the deadband setting.
 
-<details><summary>Click to expand</summary>
-<p>
-
-![Cubic Demo](https://github.com/FRC-Team2655/RobotSupport/raw/master/cubic-demo.png)
-
-Example Code:
-
-```c++
-#include <team2655/joystick.hpp>
-using namespace 2655;
-```
-
-```c++
-// Define the settings
-double deadband = 0.1, minPower = 0.2, midPower = 0.6;
-
-// Get the coefficients
-js::coefficients coefficients = js::getCubicCoefficients(deadband, minPower, midPower);
-js::coefficients deadbandonly = js::getDeadbandCoefficients(deadband);
-	
-// Different ways of getting the value
-double cubicValue = js::getScaledValue(coefficients, axisValue);
-double deadbandOnlyWithCubicCoefficients = js::getScaledValue(coefficients, axisValue, true);
-double deadbandOnlyValue = js::getScaledValue(deadbandonly, axisValue);
-```
-
-</p>
-</details>
+###### What it looks like:
+![cubic-demo.png](cubic-demo.png)
