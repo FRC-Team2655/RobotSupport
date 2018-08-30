@@ -1,3 +1,15 @@
+/**
+ * joystick.hpp
+ * Contains FRC Team 2655's joystick helper code
+ * Allows creation of cubic and deadband configurations for use with WPILib Joystick axes
+ *
+ * @author Marcus Behel
+ * @version 1.1 8-30-2018 Changed names to make easier to understand and implement
+ *
+ * Copyright (c) 2018 FRC Team 2655 - The Flying Platypi
+ * See LICENSE file for details
+ */
+
 #pragma once
 
 #include <cstdlib>

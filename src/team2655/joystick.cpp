@@ -96,7 +96,7 @@ bool team2655::jshelper::polyfit(const std::vector<TYPE> & x, const std::vector<
 
 team2655::jshelper::AxisConfig team2655::jshelper::createAxisConfig(double deadband, double minPower, double midPower){
 
-	// NO NEGATIVE VALUES!!! The regression is generated for the 1st quadrant
+	// NO NEGATIVE VALUES!!! The regression is generated for the 1st quadrant. If the input is negative the output will be negated.
 	deadband = fabs(deadband);
 	minPower = fabs(minPower);
 	midPower = fabs(midPower);
@@ -117,15 +117,15 @@ team2655::jshelper::AxisConfig team2655::jshelper::createAxisConfig(double deadb
 		std::copy_n(results.begin(), 4, coefficients.begin());
 		coefficients[4] = deadband;
 	}else{
-		// Default to a linear function that will only apply the jshelper deadband.
+		// If generating the regression fails: default to a linear function that will only apply the jshelper deadband.
 		createAxisConfig(deadband);
 	}
-	return coefficients;
+	return coefficients; // This is in the order {d, c, b, a, deadband} where f(x)=ax^3+bx^2+cx+d with x as the joystick input
 }
 
 team2655::jshelper::AxisConfig team2655::jshelper::createAxisConfig(double deadband){
 	deadband = fabs(deadband);
-	return std::array<double, 5>{ 0, 1, 0, 0, deadband };
+	return std::array<double, 5>{ 0, 1, 0, 0, deadband }; // This is in the order {d, c, b, a, deadband} where f(x)=ax^3+bx^2+cx+d with x as the joystick input
 }
 
 double team2655::jshelper::getAxisValue(const team2655::jshelper::AxisConfig config, const double axisValue, bool deadbandOnly){
@@ -136,8 +136,8 @@ double team2655::jshelper::getAxisValue(const team2655::jshelper::AxisConfig con
 	}
 
 	// Check if this is a linear relationship (if so deadband needs to be applied differently to avoid a "jump" when passing the deadband threshold
-	// If the user requested deadband application only also treat this as linera.
-	// Coefficients contains the cubic functions coefficients (indicies 0-3) and the deadband (index 4)
+	// If the user requested deadband application only also treat this as linear.
+	// Coefficients contains the cubic functions coefficients (indices 0-3) and the deadband (index 4)
 	if(deadbandOnly || (config[0] == 0 && config[1] == 1 && config[2] == 0 && config[3] == 0)){
 		// This is linear. Only need to apply a deadband.
 		// This will scale the value up after the deadband. Ex. if deadband is 0.1 this will make x=0.1 return y=0 instead of y=0.1 (the jump)

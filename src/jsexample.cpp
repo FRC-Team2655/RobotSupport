@@ -1,3 +1,13 @@
+/**
+ * jsexample.cpp
+ * An example showing how to use the team2655 jshelper code
+ *
+ * @author Marcus Behel
+ * @version 1.0 8-30-2018
+ *
+ * Copyright (c) 2018 FRC Team 2655 - The Flying Platypi
+ * See LICENSE file for details
+ */
 #include <IterativeRobot.h>
 #include <Drive/DifferentialDrive.h>
 #include <Talon.h>
@@ -49,4 +59,5 @@ public:
 	}
 };
 
+// Start the robot
 START_ROBOT_CLASS(Robot)
