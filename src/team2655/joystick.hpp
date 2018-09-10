@@ -18,8 +18,8 @@
 #include <stdexcept>
 #include <cmath>
 #include <algorithm>
-
-#include <Joystick.h>
+#include <map>
+#include <string>
 
 namespace team2655{
 	namespace jshelper{ // The js namespace contains helper functions for use with WPILib Joysticks.
