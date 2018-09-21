@@ -14,18 +14,76 @@
 
 #include <string>
 #include <vector>
+#include <chrono>
 #include <memory>
-#include <cstdio>
 
 class AutoCommand{
+protected:
+	bool _hasStarted = false;
+	bool _isComplete = false;
+	int timeout = 0;
+	long int startTime = 0;
 
+	/**
+	 * Get the current time as milliseconds from the epoch
+	 * @return Number of milliseconds since the epoch
+	 */
+	long int currentTimeMillis();
+
+	/**
+	 * Check if the command has timed out
+	 * @return
+	 */
+	bool hasTimedOut();
+public:
+	/**
+	 * Has the command been started (init called)
+	 * @return true if started, false if not
+	 */
+	bool hasStarted();
+
+	/**
+	 * Has the command completed (complete called)
+	 * @return true if completed, false if not
+	 */
+	bool isComplete();
+
+	/**
+	 * Set the timeout for this command
+	 * @param timeoutMs The timeout in milliseconds
+	 */
+	void setTimeout(int timeoutMs);
+
+	/**
+	 * Get the timeout for this command
+	 * @return The timeout for this command in milliseconds
+	 */
+	int getTimeout();
+
+	/**
+	 * Start the command
+	 * @param args The arguments provided for the command
+	 */
+	virtual void start(std::vector<std::string> args);
+
+	/**
+	 * Process the command while it is running
+	 */
+	virtual void process();
+
+	/**
+	 * Finish the command and stop running
+	 */
+	virtual void complete();
+
+	virtual ~AutoCommand() {  }
 };
 
 /**
  * A class to handle loading of autonomous command scripts and running AutoCommand objects
  */
 class AutoManager{
-private:
+protected:
 	/**
 	 * A list of commands loaded from a file
 	 */
@@ -44,8 +102,7 @@ private:
 	/**
 	 * The object for the command that is currently being executed
 	 */
-	AutoCommand currentCommand;
-protected:
+	std::unique_ptr<AutoCommand> currentCommand;
 
 	/**
 	 * Get the directory for autonomous scripts
@@ -54,11 +111,11 @@ protected:
 	virtual std::string getScriptDir() = 0;
 
 	/**
-	 * Get an AutoCommand object based on the command name
+	 * Get a unique_ptr to a new AutoCommand object based on the command name
 	 * @param commandName The name of the command
-	 * @return The command object
+	 * @return A unique pointer to a new AutoCommand child class
 	 */
-	virtual AutoCommand getCommand(std::string commandName) = 0;
+	virtual std::unique_ptr<AutoCommand> getCommand(std::string commandName) = 0;
 
 public:
 
@@ -89,9 +146,9 @@ public:
 	bool process();
 
 	/**
-	 * End the current command calling its complete method so that everything ends properly
+	 * End the current command calling its complete method so that everything ends properly then move to the end of the script
 	 */
-	void killAuto();
+	void killAuto(); //TODO: This should set the commandIndex to the last index in the script so process will return false
 
 	virtual ~AutoManager() {  }
 };
