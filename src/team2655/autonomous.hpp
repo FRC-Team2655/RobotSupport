@@ -1,12 +1,10 @@
 /**
- * autonomous.hpp
+ * joystick.hpp
  * Contains FRC Team 2655's autonomous helper code
- * The AutoManager class handles loading scripts and mapping command names to AutoCommand objects
- * The AutoCommand class handles a single command.
- * Both classes must be overridden as no default commands exist.
+ * Team 2655's CSV script based autonomous
  *
  * @author Marcus Behel
- * @version 1.1 8-30-2018 Changed names to make easier to understand and implement
+ * @version 1.0.0 9-20-2018 Initial Version
  *
  * Copyright (c) 2018 FRC Team 2655 - The Flying Platypi
  * See LICENSE file for details
@@ -14,41 +12,86 @@
 
 #pragma once
 
-#include <vector>
 #include <string>
-#include <chrono>
+#include <vector>
+#include <memory>
+#include <cstdio>
 
-namespace team2655{
-	namespace autohelper{
-		class AutoManager;
+class AutoCommand{
 
-		class AutoCommand{
-		private:
-			AutoManager *manager = nullptr;
-			std::vector<std::string> arguments;
-			bool _isFinished = false;
-			int timeout = 0;
-			long int startTime = -1;
+};
 
-		public:
-			AutoCommand(AutoManager *manager);
-			virtual ~AutoCommand();
-			virtual void init(std::vector<std::string> args);
-			virtual void process();
-			virtual void complete();
-			long int getTimeMillis();
-			bool isFinished();
-		};
-		class AutoManager{
-		private:
-			std::vector<std::string> commands;
-			std::vector<std::vector<std::string>> arguments;
-		public:
-			virtual ~AutoManager(){ }
-			bool loadScript(std::string script, std::string path = "/auto-scripts");
-			void startAutonomous();
-			void nextCommand();
-			virtual AutoCommand getCommandForName(std::string commandName) = 0;
-		};
-	}
-}
+/**
+ * A class to handle loading of autonomous command scripts and running AutoCommand objects
+ */
+class AutoManager{
+private:
+	/**
+	 * A list of commands loaded from a file
+	 */
+	std::vector<std::string> loadedCommands;
+
+	/**
+	 * A list of arguments for each command (each command can have multiple arguments)
+	 */
+	std::vector<std::vector<std::string>> arguments;
+
+	/**
+	 * The index of the command that is currently being executed
+	 */
+	int currentCommandIndex = -1;
+
+	/**
+	 * The object for the command that is currently being executed
+	 */
+	AutoCommand currentCommand;
+protected:
+
+	/**
+	 * Get the directory for autonomous scripts
+	 * @return A path to the directory where scripts are stored
+	 */
+	virtual std::string getScriptDir() = 0;
+
+	/**
+	 * Get an AutoCommand object based on the command name
+	 * @param commandName The name of the command
+	 * @return The command object
+	 */
+	virtual AutoCommand getCommand(std::string commandName) = 0;
+
+public:
+
+	/**
+	 * Load an autonomous CSV script from the script path
+	 * @param scriptName The name of the script to load
+	 * @return Was the script successfully loaded
+	 */
+	bool loadScript(std::string scriptName);
+
+	/**
+	 * Add a delay to the start of autonomous
+	 * @param delayMs How long to wait
+	 */
+	void addStartDelay(double delayMs);
+
+	/**
+	 * Manually give a set of commands and arguments to mimic a script
+	 * @param commands The commands (command names) of the commands to execute
+	 * @param arguments The arguments for each command
+	 */
+	void putScript(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments);
+
+	/**
+	 * Process the current command (and move on if needed)
+	 * @return Is done running all commands
+	 */
+	bool process();
+
+	/**
+	 * End the current command calling its complete method so that everything ends properly
+	 */
+	void killAuto();
+
+	virtual ~AutoManager() {  }
+};
