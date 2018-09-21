@@ -17,18 +17,22 @@
 #include <chrono>
 #include <memory>
 
+namespace team2655{
+namespace autonomous{
+
 class AutoCommand{
 protected:
 	bool _hasStarted = false;
 	bool _isComplete = false;
 	int timeout = 0;
 	long int startTime = 0;
+	std::vector<std::string> arguments;
 
 	/**
 	 * Get the current time as milliseconds from the epoch
 	 * @return Number of milliseconds since the epoch
 	 */
-	long int currentTimeMillis();
+	static long int currentTimeMillis();
 
 	/**
 	 * Check if the command has timed out
@@ -152,3 +156,7 @@ public:
 
 	virtual ~AutoManager() {  }
 };
+
+
+}
+}
