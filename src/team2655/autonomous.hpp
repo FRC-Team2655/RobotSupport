@@ -1,5 +1,5 @@
 /**
- * joystick.hpp
+ * autonomous.hpp
  * Contains FRC Team 2655's autonomous helper code
  * Team 2655's CSV script based autonomous
  *
@@ -14,7 +14,6 @@
 
 #include <string>
 #include <vector>
-#include <chrono>
 #include <memory>
 
 namespace team2655{
@@ -96,7 +95,7 @@ protected:
 	/**
 	 * A list of arguments for each command (each command can have multiple arguments)
 	 */
-	std::vector<std::vector<std::string>> arguments;
+	std::vector<std::vector<std::string>> loadedArguments;
 
 	/**
 	 * The index of the command that is currently being executed
@@ -121,6 +120,14 @@ protected:
 	 */
 	virtual std::unique_ptr<AutoCommand> getCommand(std::string commandName) = 0;
 
+	/**
+	 * Split a string by a character delimiter
+	 * @param s The string to split
+	 * @param delimiter The delimiter to split by
+	 * @return A vector of strings (the specific segments)
+	 */
+	std::vector<std::string> split(const std::string& s, char delimiter);
+
 public:
 
 	/**
@@ -131,10 +138,12 @@ public:
 	bool loadScript(std::string scriptName);
 
 	/**
-	 * Add a delay to the start of autonomous
-	 * @param delayMs How long to wait
+	 * Add a command to autonomous
+	 * @param command The command
+	 * @param arguments The arguments for the command
+	 * @param pos The position to insert the command at (-1 for the end of the loaded script)
 	 */
-	void addStartDelay(double delayMs);
+	void addCommand(std::string command, std::vector<std::string> arguments, int pos = -1);
 
 	/**
 	 * Manually give a set of commands and arguments to mimic a script
