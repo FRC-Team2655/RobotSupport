@@ -141,16 +141,23 @@ public:
 	 * Add a command to autonomous
 	 * @param command The command
 	 * @param arguments The arguments for the command
-	 * @param pos The position to insert the command at (-1 for the end of the loaded script)
+	 * @param pos The position to insert the command at (-1 for the end of the loaded script).
 	 */
 	void addCommand(std::string command, std::vector<std::string> arguments, int pos = -1);
 
 	/**
-	 * Manually give a set of commands and arguments to mimic a script
+	 * Add a set of commands to the end of autonomous
 	 * @param commands The commands (command names) of the commands to execute
 	 * @param arguments The arguments for each command
+	 * @param pos THe position to insert the command at (-1 for the end of the loaded script).
 	 */
-	void putScript(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments);
+	void addCommands(std::vector<std::string> &commands, std::vector<std::vector<std::string>> &arguments, int pos);
+
+	/**
+	 * Does the AutoManager have a script loaded/inserted
+	 * @return True if at least the AutoManager has at least one command
+	 */
+	bool hasCommands();
 
 	/**
 	 * Process the current command (and move on if needed)
@@ -162,6 +169,8 @@ public:
 	 * End the current command calling its complete method so that everything ends properly then move to the end of the script
 	 */
 	void killAuto(); //TODO: This should set the commandIndex to the last index in the script so process will return false
+
+	void clearCommands();
 
 	virtual ~AutoManager() {  }
 };

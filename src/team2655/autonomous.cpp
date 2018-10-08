@@ -12,7 +12,7 @@
 #include <sstream>
 #include <regex>
 #include <fstream>
-
+#include <iostream>
 
 using namespace team2655::autonomous;
 
@@ -117,7 +117,7 @@ bool AutoManager::loadScript(std::string scriptName){
 void AutoManager::addCommand(std::string command, std::vector<std::string> arguments, int pos = -1){
 
 	// Any position beyond the end of the vector is converted to -1 (aka the end)
-	if(pos > loadedCommands.size())
+	if(pos > loadedCommands.size() || pos < -1)
 		pos = -1;
 
 	// Add to the end otherwise insert at a position
@@ -131,12 +131,35 @@ void AutoManager::addCommand(std::string command, std::vector<std::string> argum
 
 }
 
-void AutoManager::putScript(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments){
-	killAuto();
-	loadedCommands = commands;
-	loadedArguments = arguments;
+void AutoManager::addCommands(std::vector<std::string> &commands, std::vector<std::vector<std::string>> &arguments, int pos){
 
-	// Reset
-	currentCommandIndex = -1;
-	currentCommand.release();
+	if(commands.size() != arguments.size()){
+		std::cerr << "AutoManagerError: addCommands: must have same number of commands and arguments" << std::endl;
+		return;
+	}
+
+	// Any position beyond the end of the vector is converted to -1 (aka the end)
+	if(pos > loadedCommands.size() || pos < -1)
+		pos = -1;
+
+	loadedCommands.insert((pos == -1) ? loadedCommands.end() : loadedCommands.begin() + pos,
+			              commands.begin(),
+						  commands.end());
+	loadedArguments.insert((pos == -1) ? loadedArguments.end() : loadedArguments.begin() + pos,
+						   arguments.begin(),
+						   arguments.end());
+}
+
+bool AutoManager::hasCommands(){
+	// If there is at least one command and each command has a list of arguments
+	return (loadedCommands.size() > 0) && (loadedArguments.size() == loadedCommands.size());
+}
+
+bool AutoManager::process(){
+	if(!hasCommands())
+		return true; // At the end of the non-existent script. Consider this the same as finished with a script
+
+	if(currentCommand.get() != nullptr){
+
+	}
 }
