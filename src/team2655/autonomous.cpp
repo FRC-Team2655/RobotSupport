@@ -44,7 +44,7 @@ int AutoCommand::getTimeout(){
 	return this->timeout;
 }
 
-void AutoCommand::start(std::vector<std::string> args){
+void AutoCommand::start(std::vector<std::string> &args){
 	this->arguments = args;
 	this->startTime = currentTimeMillis();
 	this->_hasStarted = true;
@@ -159,7 +159,38 @@ bool AutoManager::process(){
 	if(!hasCommands())
 		return true; // At the end of the non-existent script. Consider this the same as finished with a script
 
-	if(currentCommand.get() != nullptr){
-
+	// If the current command is done of there is no current command
+	if(currentCommand.get() != nullptr || currentCommand.get()->isComplete()){
+		// Move on to the next command
+		currentCommandIndex++;
+		currentCommand.release();
+		// If this is the end of the loadedCommands exit
+		if(currentCommandIndex >= loadedCommands.size())
+			return true;
+		currentCommand = getCommand(loadedCommands[currentCommandIndex]);
 	}
+
+	// start or process the current command (if it were completed it will have been handled above)
+
+	if(!currentCommand.get()->hasStarted()){
+		currentCommand.get()->start(loadedArguments[currentCommandIndex]);
+	}else{
+		currentCommand.get()->process();
+	}
+
+	return false; // This is not the end of the loaded commands
+}
+
+void AutoManager::killAuto(){
+	if(currentCommand.get() != nullptr)
+		currentCommand.get()->complete();
+	currentCommandIndex = loadedCommands.size();
+	currentCommand.release();
+}
+
+void AutoManager::clearCommands(){
+	killAuto();
+	loadedCommands.clear();
+	loadedArguments.clear();
+	currentCommandIndex = -1;
 }

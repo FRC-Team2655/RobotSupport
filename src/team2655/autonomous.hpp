@@ -25,7 +25,7 @@ protected:
 	bool _isComplete = false;
 	int timeout = 0;
 	long int startTime = 0;
-	std::vector<std::string> arguments;
+	std::vector<std::string> &arguments;
 
 	/**
 	 * Get the current time as milliseconds from the epoch
@@ -67,7 +67,7 @@ public:
 	 * Start the command
 	 * @param args The arguments provided for the command
 	 */
-	virtual void start(std::vector<std::string> args);
+	virtual void start(std::vector<std::string> &args);
 
 	/**
 	 * Process the command while it is running
@@ -168,7 +168,7 @@ public:
 	/**
 	 * End the current command calling its complete method so that everything ends properly then move to the end of the script
 	 */
-	void killAuto(); //TODO: This should set the commandIndex to the last index in the script so process will return false
+	void killAuto();
 
 	void clearCommands();
 
