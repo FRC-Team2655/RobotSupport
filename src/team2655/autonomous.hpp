@@ -17,7 +17,7 @@
 #include <memory>
 
 namespace team2655{
-namespace autonomous{
+
 
 class AutoCommand{
 protected:
@@ -176,5 +176,4 @@ public:
 };
 
 
-}
 }

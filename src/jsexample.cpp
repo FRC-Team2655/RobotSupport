@@ -8,6 +8,7 @@
  * Copyright (c) 2018 FRC Team 2655 - The Flying Platypi
  * See LICENSE file for details
  */
+
 #include <IterativeRobot.h>
 #include <Drive/DifferentialDrive.h>
 #include <Talon.h>
@@ -33,34 +34,42 @@ private:
 	DifferentialDrive robotDrive;
 	jshelper::AxisConfig driveAxisConfig, rotateAxisConfig;
 public:
-	/**
-	 * Create our joystick object, robot drive object, and axis configs
-	 */
-	Robot() : js0(0),
-	          left(0),
-			  right(1),
-	          robotDrive(left, right),
-		      driveAxisConfig(jshelper::createAxisConfig(0.1, 0.2, 0.6)),
-	          rotateAxisConfig(jshelper::createAxisConfig(0.1)){
 
-	}
+	Robot();
 	/**
 	 * Called every 20ms in teleop mode
 	 */
-	void TeleopPeriodic() override{
-
-		// Get the value of the drive axis using the cubic configuration
-		double speed = jshelper::getAxisValue(driveAxisConfig, js0.GetRawAxis(1));
-		// Or get the power axis only using the deadband (no cubic function)
-		// double speedDeadbandOnly = jshelper::getAxisValue(driveAxisConfig, js0.GetRawAxis(1), true);
-
-		// This will be deadband only because the config is a deadband config (not a cubic config)
-		double rotation = jshelper::getAxisValue(rotateAxisConfig, js0.GetRawAxis(2));
-
-		// Drive the robot
-		robotDrive.ArcadeDrive(speed, rotation, false); // Drive the robot
-	}
+	void TeleopPeriodic() override;
 };
+
+//////////////////////////////////////////////////////////////
+/// Robot Implementation
+//////////////////////////////////////////////////////////////
+
+/**
+ * Create our joystick object, robot drive object, and axis configs in this constructor
+ */
+Robot::Robot() : js0(0),
+	             left(0),
+			     right(1),
+	             robotDrive(left, right),
+		         driveAxisConfig(jshelper::createAxisConfig(0.1, 0.2, 0.6)),
+	             rotateAxisConfig(jshelper::createAxisConfig(0.1)){
+
+}
+
+void Robot::TeleopPeriodic(){
+	// Get the value of the drive axis using the cubic configuration
+	double speed = jshelper::getAxisValue(driveAxisConfig, js0.GetRawAxis(1));
+	// Or get the power axis only using the deadband (no cubic function)
+	// double speedDeadbandOnly = jshelper::getAxisValue(driveAxisConfig, js0.GetRawAxis(1), true);
+
+	// This will be deadband only because the config is a deadband config (not a cubic config)
+	double rotation = jshelper::getAxisValue(rotateAxisConfig, js0.GetRawAxis(2));
+
+	// Drive the robot
+	robotDrive.ArcadeDrive(speed, rotation, false); // Drive the robot
+}
 
 // Start the robot
 START_ROBOT_CLASS(Robot)
