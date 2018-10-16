@@ -14,7 +14,7 @@
 #include <fstream>
 #include <iostream>
 
-using namespace team2655::autonomous;
+using namespace team2655;
 
 ////////////////////////////////////////////////////////////////////////
 /// AutoCommand
@@ -33,7 +33,7 @@ bool AutoCommand::hasStarted(){
 }
 
 bool AutoCommand::isComplete(){
-	return _isComplete();
+	return _isComplete;
 }
 
 void AutoCommand::setTimeout(int timeoutMs){
@@ -44,7 +44,7 @@ int AutoCommand::getTimeout(){
 	return this->timeout;
 }
 
-void AutoCommand::start(std::vector<std::string> &args){
+void AutoCommand::start(std::vector<std::string> args){
 	this->arguments = args;
 	this->startTime = currentTimeMillis();
 	this->_hasStarted = true;
@@ -78,10 +78,12 @@ std::vector<std::string> AutoManager::split(const std::string& s, char delimiter
 }
 
 bool AutoManager::loadScript(std::string scriptName){
+
 	std::ifstream scriptFile;
-	scriptFile.open("test.csv");
+	scriptFile.open(this->getScriptDir() + "/" + scriptName);
 
 	if(!scriptFile.good()){
+		std::cerr << "Script file: \"" << scriptName << "\" not found in \"" << this->getScriptDir() << "\"" << std::endl;
 		scriptFile.close();
 		return false; // Some error accessing the file
 	}
@@ -114,10 +116,10 @@ bool AutoManager::loadScript(std::string scriptName){
 	return true;
 }
 
-void AutoManager::addCommand(std::string command, std::vector<std::string> arguments, int pos = -1){
+void AutoManager::addCommand(std::string command, std::vector<std::string> arguments, int pos){
 
 	// Any position beyond the end of the vector is converted to -1 (aka the end)
-	if(pos > loadedCommands.size() || pos < -1)
+	if((pos > ((int)loadedCommands.size())) || pos < -1)
 		pos = -1;
 
 	// Add to the end otherwise insert at a position
@@ -131,7 +133,7 @@ void AutoManager::addCommand(std::string command, std::vector<std::string> argum
 
 }
 
-void AutoManager::addCommands(std::vector<std::string> &commands, std::vector<std::vector<std::string>> &arguments, int pos){
+void AutoManager::addCommands(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments, int pos){
 
 	if(commands.size() != arguments.size()){
 		std::cerr << "AutoManagerError: addCommands: must have same number of commands and arguments" << std::endl;
@@ -139,7 +141,7 @@ void AutoManager::addCommands(std::vector<std::string> &commands, std::vector<st
 	}
 
 	// Any position beyond the end of the vector is converted to -1 (aka the end)
-	if(pos > loadedCommands.size() || pos < -1)
+	if(pos > ((int)loadedCommands.size()) || pos < -1)
 		pos = -1;
 
 	loadedCommands.insert((pos == -1) ? loadedCommands.end() : loadedCommands.begin() + pos,
@@ -157,16 +159,16 @@ bool AutoManager::hasCommands(){
 
 bool AutoManager::process(){
 	if(!hasCommands())
-		return true; // At the end of the non-existent script. Consider this the same as finished with a script
+		return false; // At the end of the non-existent script. Consider this the same as finished with a script
 
 	// If the current command is done of there is no current command
-	if(currentCommand.get() != nullptr || currentCommand.get()->isComplete()){
+	if(currentCommand.get() == nullptr || currentCommand.get()->isComplete()){
 		// Move on to the next command
 		currentCommandIndex++;
 		currentCommand.release();
 		// If this is the end of the loadedCommands exit
-		if(currentCommandIndex >= loadedCommands.size())
-			return true;
+		if(currentCommandIndex >= ((int)loadedCommands.size()))
+			return false;
 		currentCommand = getCommand(loadedCommands[currentCommandIndex]);
 	}
 
@@ -178,7 +180,7 @@ bool AutoManager::process(){
 		currentCommand.get()->process();
 	}
 
-	return false; // This is not the end of the loaded commands
+	return true; // This is not the end of the loaded commands
 }
 
 void AutoManager::killAuto(){

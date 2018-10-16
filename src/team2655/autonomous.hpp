@@ -25,7 +25,7 @@ protected:
 	bool _isComplete = false;
 	int timeout = 0;
 	long int startTime = 0;
-	std::vector<std::string> &arguments;
+	std::vector<std::string> arguments;
 
 	/**
 	 * Get the current time as milliseconds from the epoch
@@ -67,7 +67,7 @@ public:
 	 * Start the command
 	 * @param args The arguments provided for the command
 	 */
-	virtual void start(std::vector<std::string> &args);
+	virtual void start(std::vector<std::string> args);
 
 	/**
 	 * Process the command while it is running
@@ -151,7 +151,7 @@ public:
 	 * @param arguments The arguments for each command
 	 * @param pos THe position to insert the command at (-1 for the end of the loaded script).
 	 */
-	void addCommands(std::vector<std::string> &commands, std::vector<std::vector<std::string>> &arguments, int pos);
+	void addCommands(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments, int pos = -1);
 
 	/**
 	 * Does the AutoManager have a script loaded/inserted
@@ -161,7 +161,7 @@ public:
 
 	/**
 	 * Process the current command (and move on if needed)
-	 * @return Is done running all commands
+	 * @return Is currently processing a command (not the end of the script). Returns false when script is complete.
 	 */
 	bool process();
 
