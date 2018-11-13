@@ -79,6 +79,9 @@ std::vector<std::string> AutoManager::split(const std::string& s, char delimiter
 
 bool AutoManager::loadScript(std::string scriptName){
 
+	this->loadedArguments.clear();
+	this->loadedCommands.clear();
+
 	std::ifstream scriptFile;
 	scriptFile.open(this->getScriptDir() + "/" + scriptName);
 
