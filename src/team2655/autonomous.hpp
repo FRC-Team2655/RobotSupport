@@ -38,7 +38,25 @@ protected:
 	 * @return
 	 */
 	bool hasTimedOut();
+
 public:
+
+	/**
+	 * Start the command
+	 * @param args THe arguments provided for the command
+	 */
+	void doStart(std::vector<std::string> args);
+
+	/**
+	 * Periodic actions for the command
+	 */
+	void doProcess();
+
+	/**
+	 * Complete / finish the command
+	 */
+	void doComplete();
+
 	/**
 	 * Has the command been started (init called)
 	 * @return true if started, false if not
@@ -64,20 +82,20 @@ public:
 	int getTimeout();
 
 	/**
-	 * Start the command
+	 * Handle when the command starts
 	 * @param args The arguments provided for the command
 	 */
-	virtual void start(std::vector<std::string> args);
+	virtual void start(std::vector<std::string> args) = 0;
 
 	/**
-	 * Process the command while it is running
+	 * Handle periodic functions for the command
 	 */
-	virtual void process();
+	virtual void process() = 0;
 
 	/**
-	 * Finish the command and stop running
+	 * Handle command complete
 	 */
-	virtual void complete();
+	virtual void complete() = 0;
 
 	virtual ~AutoCommand() {  }
 };
@@ -105,7 +123,7 @@ protected:
 	/**
 	 * The object for the command that is currently being executed
 	 */
-	std::unique_ptr<AutoCommand> currentCommand;
+	std::unique_ptr<AutoCommand> currentCommand{nullptr};
 
 	/**
 	 * Get the directory for autonomous scripts

@@ -44,23 +44,29 @@ int AutoCommand::getTimeout(){
 	return this->timeout;
 }
 
-void AutoCommand::start(std::vector<std::string> args){
+void AutoCommand::doStart(std::vector<std::string> args){
 	this->arguments = args;
 	this->startTime = currentTimeMillis();
 	this->_hasStarted = true;
+	// Call the start function to be used by custom commands
+	start(args);
 }
 
-void AutoCommand::process(){
+void AutoCommand::doProcess(){
 	// If the command has timed out complete the command
 	if(hasTimedOut())
-		complete();
+		doComplete();
 	// If the command is completed or not started do not do anything
 	if(_isComplete || !_hasStarted)
 		return;
+	// Call the process function to be used by custom commands
+	process();
 }
 
-void AutoCommand::complete(){
+void AutoCommand::doComplete(){
 	this->_isComplete = true;
+	// Call the complete function to be used by custom commands
+	complete();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -79,8 +85,7 @@ std::vector<std::string> AutoManager::split(const std::string& s, char delimiter
 
 bool AutoManager::loadScript(std::string scriptName){
 
-	this->loadedArguments.clear();
-	this->loadedCommands.clear();
+	clearCommands();
 
 	std::ifstream scriptFile;
 	scriptFile.open(this->getScriptDir() + "/" + scriptName);
@@ -178,9 +183,9 @@ bool AutoManager::process(){
 	// start or process the current command (if it were completed it will have been handled above)
 
 	if(!currentCommand.get()->hasStarted()){
-		currentCommand.get()->start(loadedArguments[currentCommandIndex]);
+		currentCommand.get()->doStart(loadedArguments[currentCommandIndex]);
 	}else{
-		currentCommand.get()->process();
+		currentCommand.get()->doProcess();
 	}
 
 	return true; // This is not the end of the loaded commands
@@ -188,7 +193,7 @@ bool AutoManager::process(){
 
 void AutoManager::killAuto(){
 	if(currentCommand.get() != nullptr)
-		currentCommand.get()->complete();
+		currentCommand.get()->doComplete();
 	currentCommandIndex = loadedCommands.size();
 	currentCommand.release();
 }
