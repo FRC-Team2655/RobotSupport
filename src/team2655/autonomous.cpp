@@ -13,6 +13,7 @@
 #include <regex>
 #include <fstream>
 #include <iostream>
+#include <algorithm>
 
 using namespace team2655;
 
@@ -20,12 +21,12 @@ using namespace team2655;
 /// AutoCommand
 ////////////////////////////////////////////////////////////////////////
 
-long int AutoCommand::currentTimeMillis(){
+int64_t AutoCommand::currentTimeMillis(){
 	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 bool AutoCommand::hasTimedOut(){
-	return currentTimeMillis()  - startTime >= timeout;
+	return timeout > 0 && (currentTimeMillis()  - startTime >= timeout);
 }
 
 bool AutoCommand::hasStarted(){
@@ -44,18 +45,20 @@ int AutoCommand::getTimeout(){
 	return this->timeout;
 }
 
-void AutoCommand::doStart(std::vector<std::string> args){
+void AutoCommand::doStart(std::string commandName, std::vector<std::string> args){
+	this->commandName = commandName;
 	this->arguments = args;
 	this->startTime = currentTimeMillis();
 	this->_hasStarted = true;
 	// Call the start function to be used by custom commands
-	start(args);
+	start(commandName, args);
 }
 
 void AutoCommand::doProcess(){
 	// If the command has timed out complete the command
-	if(hasTimedOut())
-		doComplete();
+	if(hasTimedOut()){
+		complete();
+	}
 	// If the command is completed or not started do not do anything
 	if(_isComplete || !_hasStarted)
 		return;
@@ -63,10 +66,18 @@ void AutoCommand::doProcess(){
 	process();
 }
 
-void AutoCommand::doComplete(){
+void AutoCommand::complete(){
 	this->_isComplete = true;
 	// Call the complete function to be used by custom commands
-	complete();
+	handleComplete();
+}
+
+////////////////////////////////////////////////////////////////////////
+/// BackgroundAutoCommand
+////////////////////////////////////////////////////////////////////////
+
+void BackgroundAutoCommand::doUpdateArgs(std::string commandName, std::vector<std::string> args){
+	updateArgs(commandName, args);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -83,15 +94,44 @@ std::vector<std::string> AutoManager::split(const std::string& s, char delimiter
 	return tokens;
 }
 
-bool AutoManager::loadScript(std::string scriptName){
+// Registration methods
+
+void AutoManager::registerCommand(CmdCreator creator, std::string name){
+	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+	// Only one command *or* background command can have a key.
+	if(backgroundCommands.find(name) == backgroundCommands.end() && registeredCommands.find(name) == registeredCommands.end()){
+		registeredCommands[name] = creator;
+	}else{
+		std::cerr << "Cannot register command with name \"" << name << "\". A command is already registered with that name." << std::endl;
+	}
+}
+
+void AutoManager::registerCommand(CmdCreator creator, std::vector<std::string> names){
+	for(size_t i = 0; i < names.size(); ++i){
+		registerCommand(creator, names[i]);
+	}
+}
+
+void AutoManager::unregisterAll(){
+	killAuto();
+	registeredCommands.clear();
+	backgroundCommands.clear();
+	bgCommandTypes.clear();
+	uniqueBgCommands.clear();
+}
+
+// Script management
+
+bool AutoManager::loadScript(std::string fileName){
 
 	clearCommands();
 
 	std::ifstream scriptFile;
-	scriptFile.open(this->getScriptDir() + "/" + scriptName);
+	scriptFile.open(fileName);
 
 	if(!scriptFile.good()){
-		std::cerr << "Script file: \"" << scriptName << "\" not found in \"" << this->getScriptDir() << "\"" << std::endl;
+		std::cerr << "Script file: \"" << fileName << "\" not found." << std::endl;
 		scriptFile.close();
 		return false; // Some error accessing the file
 	}
@@ -101,11 +141,12 @@ bool AutoManager::loadScript(std::string scriptName){
 	fileContents << scriptFile.rdbuf();
 	scriptFile.close();
 
-	// Remove spaces after commas
-	std::string csvData = std::regex_replace(fileContents.str(), std::regex(",\\s+"), ",");
+	// Remove spaces before and after commas
+	// Commands and args cannot start or end with spaces
+	//std::string csvData = std::regex_replace(fileContents.str(), std::regex(",\\ +"), ",");
 
 	// Standardize line endings convert any line ending int '\n'
-	csvData = std::regex_replace(csvData, std::regex("(\r\n|\r|\n)"), "\n");
+	std::string csvData = std::regex_replace(fileContents.str(), std::regex("(\r\n|\r|\n)"), "\n");
 
 	std::vector<std::string> lines = split(csvData, '\n'); // Separate each line
 
@@ -160,42 +201,8 @@ void AutoManager::addCommands(std::vector<std::string> commands, std::vector<std
 						   arguments.end());
 }
 
-bool AutoManager::hasCommands(){
-	// If there is at least one command and each command has a list of arguments
-	return (loadedCommands.size() > 0) && (loadedArguments.size() == loadedCommands.size());
-}
-
-bool AutoManager::process(){
-	if(!hasCommands())
-		return false; // At the end of the non-existent script. Consider this the same as finished with a script
-
-	// If the current command is done of there is no current command
-	if(currentCommand.get() == nullptr || currentCommand.get()->isComplete()){
-		// Move on to the next command
-		currentCommandIndex++;
-		currentCommand.release();
-		// If this is the end of the loadedCommands exit
-		if(currentCommandIndex >= ((int)loadedCommands.size()))
-			return false;
-		currentCommand = getCommand(loadedCommands[currentCommandIndex]);
-	}
-
-	// start or process the current command (if it were completed it will have been handled above)
-
-	if(!currentCommand.get()->hasStarted()){
-		currentCommand.get()->doStart(loadedArguments[currentCommandIndex]);
-	}else{
-		currentCommand.get()->doProcess();
-	}
-
-	return true; // This is not the end of the loaded commands
-}
-
-void AutoManager::killAuto(){
-	if(currentCommand.get() != nullptr)
-		currentCommand.get()->doComplete();
-	currentCommandIndex = loadedCommands.size();
-	currentCommand.release();
+size_t AutoManager::loadedCommandCount(){
+	return loadedCommands.size();
 }
 
 void AutoManager::clearCommands(){
@@ -203,4 +210,88 @@ void AutoManager::clearCommands(){
 	loadedCommands.clear();
 	loadedArguments.clear();
 	currentCommandIndex = -1;
+}
+
+// Perform actions
+
+void AutoManager::handleNextBgCommands(){
+	// If the next command is a background command process background commands until
+	//    there are no more commands or until the next is not a background command
+	std::string key = loadedCommands[currentCommandIndex];
+	std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+	while(backgroundCommands.find(key) != backgroundCommands.end()){
+		uniqueBgCommands[backgroundCommands[key]]->doUpdateArgs(key, loadedArguments[currentCommandIndex]);
+		currentCommandIndex++;
+
+		// Get next key. This will repeat if the next key is for a background command
+		key = loadedCommands[currentCommandIndex];
+		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+	}
+}
+
+bool AutoManager::process(){
+	if(loadedCommandCount() < 1)
+		return false; // At the end of the non-existent script. Consider this the same as finished with a script
+
+	bool result = true;
+	// If the current command is done of there is no current command
+	if(currentCommand.get() == nullptr || currentCommand.get()->isComplete()){
+		// Move on to the next command
+		currentCommandIndex++;
+		currentCommand.release();
+
+		// If this is the end of the loadedCommands will return false, but still needs to reach processing of bg commands
+		if(currentCommandIndex >= loadedCommands.size()){
+			result =  false;
+		}else{
+			// Handle the next several (if any) background commands
+			handleNextBgCommands();
+
+			// If this is the end of the loadedCommands will return false, but still needs to reach processing of bg commands
+			if(currentCommandIndex >= loadedCommands.size()){
+				result =  false;
+			}else{
+				// Get next command
+				std::string key = loadedCommands[currentCommandIndex];
+				std::transform(key.begin(), key.end(), key.begin(), ::tolower);
+				if(registeredCommands.find(key) != registeredCommands.end()){
+					currentCommand = registeredCommands[key](); // Run the creator for this command
+				}else{
+					std::cerr << "WARNING: No command registered for key \"" << key << "\". Command will be skipped." << std::endl;
+				}
+			}
+		}
+
+		
+	}
+
+	// start or process the current command (if it were completed it will have been handled above)
+	if(currentCommand.get() != nullptr){
+		if(!currentCommand.get()->hasStarted()){
+			currentCommand.get()->doStart(loadedCommands[currentCommandIndex], loadedArguments[currentCommandIndex]);
+			currentCommand.get()->process();
+		}else{
+			currentCommand.get()->doProcess();
+		}
+	}
+
+	// Process background commands
+	for (auto const &element : uniqueBgCommands){
+		if(element.get()->shouldProcess())
+			element.get()->process();
+	}
+
+	return result; // True if there are more commands to handle in the script (this could be false but bg commands still need to run)
+}
+
+void AutoManager::killAuto(){
+	if(currentCommand.get() != nullptr)
+		currentCommand.get()->complete();
+	currentCommandIndex = loadedCommands.size();
+	currentCommand.release();
+
+	// Kill all background commands
+	for (auto const &element : uniqueBgCommands){
+		element.get()->kill();
+	}
 }

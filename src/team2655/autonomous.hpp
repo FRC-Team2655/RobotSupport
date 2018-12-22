@@ -12,9 +12,13 @@
 
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <vector>
 #include <memory>
+#include <unordered_map>
+#include <functional>
+#include <algorithm>
 
 namespace team2655{
 
@@ -24,14 +28,15 @@ protected:
 	bool _hasStarted = false;
 	bool _isComplete = false;
 	int timeout = 0;
-	long int startTime = 0;
+	int64_t startTime = 0;
+	std::string commandName;
 	std::vector<std::string> arguments;
 
 	/**
 	 * Get the current time as milliseconds from the epoch
 	 * @return Number of milliseconds since the epoch
 	 */
-	static long int currentTimeMillis();
+	static int64_t currentTimeMillis();
 
 	/**
 	 * Check if the command has timed out
@@ -45,7 +50,7 @@ public:
 	 * Start the command
 	 * @param args THe arguments provided for the command
 	 */
-	void doStart(std::vector<std::string> args);
+	void doStart(std::string commandName, std::vector<std::string> args);
 
 	/**
 	 * Periodic actions for the command
@@ -55,7 +60,7 @@ public:
 	/**
 	 * Complete / finish the command
 	 */
-	void doComplete();
+	void complete();
 
 	/**
 	 * Has the command been started (init called)
@@ -85,7 +90,7 @@ public:
 	 * Handle when the command starts
 	 * @param args The arguments provided for the command
 	 */
-	virtual void start(std::vector<std::string> args) = 0;
+	virtual void start(std::string commandName, std::vector<std::string> args) = 0;
 
 	/**
 	 * Handle periodic functions for the command
@@ -95,48 +100,51 @@ public:
 	/**
 	 * Handle command complete
 	 */
-	virtual void complete() = 0;
+	virtual void handleComplete() = 0;
 
 	virtual ~AutoCommand() {  }
 };
+
+class BackgroundAutoCommand{
+public:
+	void doUpdateArgs(std::string commandName, std::vector<std::string> args);
+	virtual void updateArgs(std::string commandName, std::vector<std::string> args) = 0;
+	virtual void process() = 0;
+	virtual void kill() = 0;
+	virtual bool shouldProcess() = 0;
+
+	virtual ~BackgroundAutoCommand(){}
+};
+
+typedef std::unique_ptr<AutoCommand> CmdPointer;
+typedef std::function<CmdPointer()> CmdCreator;
+typedef std::unique_ptr<BackgroundAutoCommand> BgCmdPointer;
+
+template<class T>
+CmdPointer CommandCreator(){
+	if(!std::is_base_of<AutoCommand, T>::value){
+		std::cerr << "WARNING: Creator cannot create command. Given type is not a valid AutoCommand." << std::endl;
+		return CmdPointer(nullptr);
+	}
+	return CmdPointer(new T());
+}
 
 /**
  * A class to handle loading of autonomous command scripts and running AutoCommand objects
  */
 class AutoManager{
 protected:
-	/**
-	 * A list of commands loaded from a file
-	 */
+	// Data for the current script
 	std::vector<std::string> loadedCommands;
-
-	/**
-	 * A list of arguments for each command (each command can have multiple arguments)
-	 */
 	std::vector<std::vector<std::string>> loadedArguments;
+	size_t currentCommandIndex = -1;
+	CmdPointer currentCommand{nullptr};
 
-	/**
-	 * The index of the command that is currently being executed
-	 */
-	int currentCommandIndex = -1;
-
-	/**
-	 * The object for the command that is currently being executed
-	 */
-	std::unique_ptr<AutoCommand> currentCommand{nullptr};
-
-	/**
-	 * Get the directory for autonomous scripts
-	 * @return A path to the directory where scripts are stored
-	 */
-	virtual std::string getScriptDir() = 0;
-
-	/**
-	 * Get a unique_ptr to a new AutoCommand object based on the command name
-	 * @param commandName The name of the command
-	 * @return A unique pointer to a new AutoCommand child class
-	 */
-	virtual std::unique_ptr<AutoCommand> getCommand(std::string commandName) = 0;
+	// Registered commands. Used to get a command from a command name (string)
+	std::unordered_map<std::string, CmdCreator> registeredCommands;
+	std::unordered_map<std::string, size_t> backgroundCommands; // This handles mapping from string to index in uniqueBgCommands
+	std::vector<BgCmdPointer> uniqueBgCommands; // Only one per registered type so if registered with 5 names will not be run 5 times
+	std::vector<std::string> bgCommandTypes;
 
 	/**
 	 * Split a string by a character delimiter
@@ -146,14 +154,86 @@ protected:
 	 */
 	std::vector<std::string> split(const std::string& s, char delimiter);
 
+	/**
+	 * If the next command is a background command update its values.
+	 * This will happen for *all* consectutive background commands.
+	 */
+	void handleNextBgCommands();
+
 public:
 
 	/**
+	 * Register a command with the AutoManager
+	 * @param creator The CommandCreator for the command (use CommandCreator<T>)
+	 * @param name The name to register the command with
+	 */
+	void registerCommand(CmdCreator creator, std::string name);
+
+	/**
+	 * Register a command with the AutoManager
+	 * @param creator The CommandCreator for the command (use CommandCreator<T>)
+	 * @param names A set of names to register the command with
+	 */
+	void registerCommand(CmdCreator creator, std::vector<std::string> names);
+
+	/**
+	 * Register a background command with the auto manager
+	 * @param name The name to register the command with
+	 */
+	template<class T>
+	void registerBackgroundCommand(std::string name){
+		if(!std::is_base_of<BackgroundAutoCommand, T>::value){
+			std::cerr << "WARNING: Cannot register background command. Given type is not a valid BackgroundAutoCommand." << std::endl;
+			return;
+		}
+
+		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+		// Only one command *or* background command can have a key.
+		if(backgroundCommands.find(name) == backgroundCommands.end() && registeredCommands.find(name) == registeredCommands.end()){
+			const std::type_info &t = typeid(T); // Type of command
+			auto it = std::find(bgCommandTypes.begin(), bgCommandTypes.end(), t.name()); // Is this type already added
+			if(it == bgCommandTypes.end()){
+				// First one of this type registered. Add to uniqueCmds vector and register mapping to index
+				bgCommandTypes.push_back(t.name());
+				uniqueBgCommands.push_back(BgCmdPointer(new T()));
+				backgroundCommands[name] = uniqueBgCommands.size() - 1;
+			}else{
+				// This type already registered
+				backgroundCommands[name] = it - bgCommandTypes.begin(); // Map new name key to existing command in uniqueCmds vector
+			}
+		}else{
+			std::cerr << "Cannot register command with name \"" << name << "\". A command is already registered with that name." << std::endl;
+		}
+	}
+
+	/**
+	 * Register a background command with the auto manager
+	 * @param names A set of names to register the command with
+	 */
+	template<class T>
+	void registerBackgroundCommand(std::vector<std::string> names){
+		if(!std::is_base_of<BackgroundAutoCommand, T>::value){
+			std::cerr << "WARNING: Cannot register background command. Given type is not a valid BackgroundAutoCommand." << std::endl;
+			return;
+		}
+
+		for(size_t i = 0; i < names.size(); ++i){
+			registerBackgroundCommand<T>(names[i]);
+		}
+	}
+
+	/**
+	 * Unregister all commands and background commands
+	 */
+	void unregisterAll();
+
+	/**
 	 * Load an autonomous CSV script from the script path
-	 * @param scriptName The name of the script to load
+	 * @param fileName The full path to the script to load
 	 * @return Was the script successfully loaded
 	 */
-	bool loadScript(std::string scriptName);
+	bool loadScript(std::string fileName);
 
 	/**
 	 * Add a command to autonomous
@@ -172,23 +252,29 @@ public:
 	void addCommands(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments, int pos = -1);
 
 	/**
-	 * Does the AutoManager have a script loaded/inserted
-	 * @return True if at least the AutoManager has at least one command
+	 * Remove all loaded commands
 	 */
-	bool hasCommands();
+	void clearCommands();
 
 	/**
-	 * Process the current command (and move on if needed)
-	 * @return Is currently processing a command (not the end of the script). Returns false when script is complete.
+	 * Get the number of loaded (and added) commands
+	 * @return The number of commands loaded from a script (and added manually)
+	 */
+	size_t loadedCommandCount();
+
+	/**
+	 * Process the autonomous commands.
+	 * Handles the current command, any background commands, and moving between commands.
+	 * @return True if there are any commands (excluding background commands) that have not finished
 	 */
 	bool process();
 
 	/**
-	 * End the current command calling its complete method so that everything ends properly then move to the end of the script
+	 * End the current command and all background commands
+	 * Calls complete method so that everything ends properly then move to the end of the script
 	 */
 	void killAuto();
 
-	void clearCommands();
 
 	virtual ~AutoManager() {  }
 };
