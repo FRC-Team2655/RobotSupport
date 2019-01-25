@@ -1,0 +1,26 @@
+{
+    "fileName": "Team2655RobotSupport.json",
+    "name": "Team 2655 Robot Support Library",
+    "version": __VERSION_HERE__,
+    "uuid": "3e5bffc0-64be-4773-b433-c23653332861",
+    "mavenUrls": [
+        "http://maven.highcurrent.io/maven"
+    ],
+    "jsonUrl": "http://maven.highcurrent.io/vendordeps/Team2655RobotSupport.json",
+    "javaDependencies": [],
+    "jniDependencies": [],
+    "cppDependencies": [
+        {
+            "groupId": "org.team2655",
+            "artifactId": "robotsupport-cpp",
+            "version": __VERSION_HERE__,
+            "libName": "librobotsupport2655",
+            "headerClassifier": "headers",
+            "sharedLibrary": false,
+            "skipInvalidPlatforms": true,
+            "binaryPlatforms": [
+                "linuxathena"
+            ]
+        }
+    ]
+}

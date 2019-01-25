@@ -6,7 +6,7 @@
  * See LICENSE file for details
  */
 
-#include "autonomous.hpp"
+#include <team2655/autonomous.hpp>
 
 #include <chrono>
 #include <sstream>
@@ -269,7 +269,7 @@ bool AutoManager::process(){
 	if(currentCommand.get() != nullptr){
 		if(!currentCommand.get()->hasStarted()){
 			currentCommand.get()->doStart(loadedCommands[currentCommandIndex], loadedArguments[currentCommandIndex]);
-			currentCommand.get()->process();
+			currentCommand.get()->doProcess();
 		}else{
 			currentCommand.get()->doProcess();
 		}
