@@ -15,70 +15,9 @@
 #include <iostream>
 #include <algorithm>
 
+#include <frc/DriverStation.h>
+
 using namespace team2655;
-
-////////////////////////////////////////////////////////////////////////
-/// AutoCommand
-////////////////////////////////////////////////////////////////////////
-
-int64_t AutoCommand::currentTimeMillis(){
-	return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-}
-
-bool AutoCommand::hasTimedOut(){
-	return timeout > 0 && (currentTimeMillis()  - startTime >= timeout);
-}
-
-bool AutoCommand::hasStarted(){
-	return _hasStarted;
-}
-
-bool AutoCommand::isComplete(){
-	return _isComplete;
-}
-
-void AutoCommand::setTimeout(int timeoutMs){
-	this->timeout = timeoutMs;
-}
-
-int AutoCommand::getTimeout(){
-	return this->timeout;
-}
-
-void AutoCommand::doStart(std::string commandName, std::vector<std::string> args){
-	this->commandName = commandName;
-	this->arguments = args;
-	this->startTime = currentTimeMillis();
-	this->_hasStarted = true;
-	// Call the start function to be used by custom commands
-	start(commandName, args);
-}
-
-void AutoCommand::doProcess(){
-	// If the command has timed out complete the command
-	if(hasTimedOut()){
-		complete();
-	}
-	// If the command is completed or not started do not do anything
-	if(_isComplete || !_hasStarted)
-		return;
-	// Call the process function to be used by custom commands
-	process();
-}
-
-void AutoCommand::complete(){
-	this->_isComplete = true;
-	// Call the complete function to be used by custom commands
-	handleComplete();
-}
-
-////////////////////////////////////////////////////////////////////////
-/// BackgroundAutoCommand
-////////////////////////////////////////////////////////////////////////
-
-void BackgroundAutoCommand::doUpdateArgs(std::string commandName, std::vector<std::string> args){
-	updateArgs(commandName, args);
-}
 
 ////////////////////////////////////////////////////////////////////////
 /// AutoManager
@@ -96,29 +35,25 @@ std::vector<std::string> AutoManager::split(const std::string& s, char delimiter
 
 // Registration methods
 
-void AutoManager::registerCommand(CmdCreator creator, std::string name){
+void AutoManager::registerCommand(CmdCreator creator, bool isBackground, std::string name){
 	std::transform(name.begin(), name.end(), name.begin(), ::tolower);
 
 	// Only one command *or* background command can have a key.
-	if(backgroundCommands.find(name) == backgroundCommands.end() && registeredCommands.find(name) == registeredCommands.end()){
-		registeredCommands[name] = creator;
-	}else{
-		std::cerr << "Cannot register command with name \"" << name << "\". A command is already registered with that name." << std::endl;
+	if(registeredCommands.find(name) == registeredCommands.end()){
+		registeredCommands[name] = RegisteredCommand{creator, isBackground};
+	}else{	
+		frc::DriverStation::ReportError("Cannot register command with name \"" + name + "\". A command is already registered with that name.");
 	}
 }
 
-void AutoManager::registerCommand(CmdCreator creator, std::vector<std::string> names){
+void AutoManager::registerCommand(CmdCreator creator, bool isBackground, std::vector<std::string> names){
 	for(size_t i = 0; i < names.size(); ++i){
-		registerCommand(creator, names[i]);
+		registerCommand(creator, isBackground, names[i]);
 	}
 }
 
 void AutoManager::unregisterAll(){
-	killAuto();
 	registeredCommands.clear();
-	backgroundCommands.clear();
-	bgCommandTypes.clear();
-	uniqueBgCommands.clear();
 }
 
 // Script management
@@ -157,10 +92,6 @@ bool AutoManager::loadScript(std::string fileName){
 		columns.erase(columns.begin()); // Remove the command from the list of columns. This will leave only arguments
 		loadedArguments.push_back(columns);
 	}
-
-	// Reset
-	currentCommandIndex = -1;
-	currentCommand.release();
 
 	return true;
 }
@@ -206,92 +137,23 @@ size_t AutoManager::loadedCommandCount(){
 }
 
 void AutoManager::clearCommands(){
-	killAuto();
 	loadedCommands.clear();
 	loadedArguments.clear();
-	currentCommandIndex = -1;
 }
 
-// Perform actions
-
-void AutoManager::handleNextBgCommands(){
-	// If the next command is a background command process background commands until
-	//    there are no more commands or until the next is not a background command
-	std::string key = loadedCommands[currentCommandIndex];
-	std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-	while(backgroundCommands.find(key) != backgroundCommands.end()){
-		uniqueBgCommands[backgroundCommands[key]]->doUpdateArgs(key, loadedArguments[currentCommandIndex]);
-		currentCommandIndex++;
-
-		// Get next key. This will repeat if the next key is for a background command
-		key = loadedCommands[currentCommandIndex];
-		std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-	}
-}
-
-bool AutoManager::process(){
-	if(loadedCommandCount() < 1)
-		return false; // At the end of the non-existent script. Consider this the same as finished with a script
-
-	bool result = true;
-	// If the current command is done of there is no current command
-	if(currentCommand.get() == nullptr || currentCommand.get()->isComplete()){
-		// Move on to the next command
-		currentCommandIndex++;
-		currentCommand.release();
-
-		// If this is the end of the loadedCommands will return false, but still needs to reach processing of bg commands
-		if(currentCommandIndex >= loadedCommands.size()){
-			result =  false;
+CmdGroupPointer AutoManager::getScriptCommand(){
+	CmdGroupPointer cmdGroup = std::unique_ptr<frc::CommandGroup>(new frc::CommandGroup());
+	for(size_t i = 0; i < loadedCommands.size(); ++i){
+		std::string cmd = loadedCommands[i];
+		if(registeredCommands.find(cmd) == registeredCommands.end()){
+			frc::DriverStation::ReportError("Script referenced command (command #" + std::to_string(i) + ") \"" + cmd + "\", but no command was registered with that name.");
 		}else{
-			// Handle the next several (if any) background commands
-			handleNextBgCommands();
-
-			// If this is the end of the loadedCommands will return false, but still needs to reach processing of bg commands
-			if(currentCommandIndex >= loadedCommands.size()){
-				result =  false;
+			if(registeredCommands[cmd].isBackground){
+				cmdGroup.get()->AddParallel(registeredCommands[cmd].creator());
 			}else{
-				// Get next command
-				std::string key = loadedCommands[currentCommandIndex];
-				std::transform(key.begin(), key.end(), key.begin(), ::tolower);
-				if(registeredCommands.find(key) != registeredCommands.end()){
-					currentCommand = registeredCommands[key](); // Run the creator for this command
-				}else{
-					std::cerr << "WARNING: No command registered for key \"" << key << "\". Command will be skipped." << std::endl;
-				}
+				cmdGroup.get()->AddSequential(registeredCommands[cmd].creator());
 			}
 		}
-
-		
 	}
-
-	// start or process the current command (if it were completed it will have been handled above)
-	if(currentCommand.get() != nullptr){
-		if(!currentCommand.get()->hasStarted()){
-			currentCommand.get()->doStart(loadedCommands[currentCommandIndex], loadedArguments[currentCommandIndex]);
-			currentCommand.get()->doProcess();
-		}else{
-			currentCommand.get()->doProcess();
-		}
-	}
-
-	// Process background commands
-	for (auto const &element : uniqueBgCommands){
-		if(element.get()->shouldProcess())
-			element.get()->process();
-	}
-
-	return result; // True if there are more commands to handle in the script (this could be false but bg commands still need to run)
-}
-
-void AutoManager::killAuto(){
-	if(currentCommand.get() != nullptr)
-		currentCommand.get()->complete();
-	currentCommandIndex = loadedCommands.size();
-	currentCommand.release();
-
-	// Kill all background commands
-	for (auto const &element : uniqueBgCommands){
-		element.get()->kill();
-	}
+	return std::move(cmdGroup);
 }
