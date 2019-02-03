@@ -6,7 +6,7 @@
  * @author Marcus Behel
  * @version 1.0.0 9-20-2018 Initial Version
  *
- * Copyright (c) 2018 FRC Team 2655 - The Flying Platypi
+ * Copyright (c) 2019 FRC Team 2655 - The Flying Platypi
  * See LICENSE file for details
  */
 
@@ -25,16 +25,27 @@
 
 namespace team2655{
 
+class AutoCommand : public frc::Command{
+public:
+	AutoCommand();
+	AutoCommand(std::string commandName, std::vector<std::string> arguments);
+
+protected:
+	std::string commandName;
+	std::vector<std::string> arguments;
+	bool startedFromAutoManager = false;
+};
+
 typedef std::unique_ptr<frc::CommandGroup> CmdGroupPointer;
-typedef std::function<frc::Command*()> CmdCreator;
+typedef std::function<AutoCommand*(std::string, std::vector<std::string>)> CmdCreator;
 
 template<class T>
-frc::Command *CommandCreator(){
-	if(!std::is_base_of<frc::Command, T>::value){
-		std::cerr << "WARNING: Creator cannot create command. Given type is not a valid frc::Command." << std::endl;
+AutoCommand *CommandCreator(std::string commandName, std::vector<std::string> args){
+	if(!std::is_base_of<AutoCommand, T>::value){
+		std::cerr << "WARNING: Creator cannot create command. Given type is not a valid AutoCommand." << std::endl;
 		return nullptr;
 	}
-	return new T();
+	return new T(commandName, args);
 }
 
 struct RegisteredCommand{
@@ -77,22 +88,6 @@ public:
 	 * @param names A set of names to register the command with
 	 */
 	void registerCommand(CmdCreator creator, bool isBackground, std::vector<std::string> names);
-
-	/**
-	 * Register a background command with the auto manager
-	 * @param names A set of names to register the command with
-	 */
-	template<class T>
-	void registerBackgroundCommand(std::vector<std::string> names){
-		if(!std::is_base_of<BackgroundAutoCommand, T>::value){
-			std::cerr << "WARNING: Cannot register background command. Given type is not a valid BackgroundAutoCommand." << std::endl;
-			return;
-		}
-
-		for(size_t i = 0; i < names.size(); ++i){
-			registerBackgroundCommand<T>(names[i]);
-		}
-	}
 
 	/**
 	 * Unregister all commands

@@ -2,7 +2,7 @@
  * autonomous.cpp
  * See autonomous.hpp for details.
  *
- * Copyright (c) 2018 FRC Team 2655 - The Flying Platypi
+ * Copyright (c) 2019 FRC Team 2655 - The Flying Platypi
  * See LICENSE file for details
  */
 
@@ -18,6 +18,13 @@
 #include <frc/DriverStation.h>
 
 using namespace team2655;
+
+AutoCommand::AutoCommand() : startedFromAutoManager(false) {}
+
+AutoCommand::AutoCommand(std::string commandName, std::vector<std::string> arguments) : 
+				commandName(commandName), arguments(arguments), startedFromAutoManager(true) {
+
+}
 
 ////////////////////////////////////////////////////////////////////////
 /// AutoManager
@@ -149,9 +156,9 @@ CmdGroupPointer AutoManager::getScriptCommand(){
 			frc::DriverStation::ReportError("Script referenced command (command #" + std::to_string(i) + ") \"" + cmd + "\", but no command was registered with that name.");
 		}else{
 			if(registeredCommands[cmd].isBackground){
-				cmdGroup.get()->AddParallel(registeredCommands[cmd].creator());
+				cmdGroup.get()->AddParallel(registeredCommands[cmd].creator(cmd, loadedArguments[i]));
 			}else{
-				cmdGroup.get()->AddSequential(registeredCommands[cmd].creator());
+				cmdGroup.get()->AddSequential(registeredCommands[cmd].creator(cmd, loadedArguments[i]));
 			}
 		}
 	}
