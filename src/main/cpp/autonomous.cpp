@@ -19,6 +19,22 @@
 
 using namespace team2655;
 
+// Used to construct a CommandGroup dynamically
+
+GroupAddCommand::GroupAddCommand(AutoCommand *commandToAdd, bool isParallel) : 
+		commandToAdd(commandToAdd), isParallel(isParallel){}
+
+
+AutoCommandGroup::AutoCommandGroup(std::vector<GroupAddCommand> cmdsToAdd) : frc::CommandGroup(){
+	for(auto &it : cmdsToAdd){
+		if(it.isParallel){
+			AddParallel(it.commandToAdd);
+		}else{
+			AddSequential(it.commandToAdd);
+		}
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////
 /// AutoManager
 ////////////////////////////////////////////////////////////////////////
@@ -142,19 +158,19 @@ void AutoManager::clearCommands(){
 }
 
 CmdGroupPointer AutoManager::getScriptCommand(){
-	CmdGroupPointer cmdGroup = std::unique_ptr<frc::CommandGroup>(new frc::CommandGroup());
+	std::vector<GroupAddCommand> cmdsToAdd;
 	for(size_t i = 0; i < loadedCommands.size(); ++i){
 		std::string cmd = loadedCommands[i];
 		std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
 		if(registeredCommands.find(cmd) == registeredCommands.end()){
 			frc::DriverStation::ReportError("Script referenced command (command #" + std::to_string(i) + ") \"" + cmd + "\", but no command was registered with that name.");
 		}else{
-			if(registeredCommands[cmd].isBackground){
-				cmdGroup.get()->AddParallel(registeredCommands[cmd].creator(cmd, loadedArguments[i]));
-			}else{
-				cmdGroup.get()->AddSequential(registeredCommands[cmd].creator(cmd, loadedArguments[i]));
-			}
+			cmdsToAdd.push_back(
+				GroupAddCommand(registeredCommands[cmd].creator(cmd, loadedArguments[i]), 
+				registeredCommands[cmd].isBackground)
+			);
+			std::cout << "Size: " << cmdsToAdd.size() << std::endl;
 		}
 	}
-	return std::move(cmdGroup);
+	return std::unique_ptr<frc::CommandGroup>(new AutoCommandGroup(cmdsToAdd));
 }

@@ -3,5 +3,6 @@
         "iostream": "cpp",
         "xstring": "cpp"
     },
-    "java.configuration.updateBuildConfiguration": "automatic"
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "editor.rulers": [100]
 }

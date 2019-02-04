@@ -25,6 +25,27 @@
 
 namespace team2655{
 
+/*
+ * Commands must be added to a command group in the constructor. GroupAddCommand is a structure
+ * to hold a command to add and how to add (parallel or sequential). A vector of these is given to
+ * a AutoCommandGroup which will add them in its constructor. An AutoCommandGroup will be returned 
+ * from the getScriptCommand function;
+ */
+
+class AutoCommand;
+
+class GroupAddCommand{
+public:
+	GroupAddCommand(AutoCommand *commandToAdd, bool isParallel);
+	AutoCommand *commandToAdd = nullptr;
+	bool isParallel = false;
+};
+
+class AutoCommandGroup : public frc::CommandGroup{
+public:
+	AutoCommandGroup(std::vector<GroupAddCommand> cmdsToAdd);
+};
+
 class AutoCommand : public frc::Command{
 public:
 	std::string commandName = "";
