@@ -19,13 +19,6 @@
 
 using namespace team2655;
 
-AutoCommand::AutoCommand() : startedFromAutoManager(false) {}
-
-AutoCommand::AutoCommand(std::string commandName, std::vector<std::string> arguments) : 
-				commandName(commandName), arguments(arguments), startedFromAutoManager(true) {
-
-}
-
 ////////////////////////////////////////////////////////////////////////
 /// AutoManager
 ////////////////////////////////////////////////////////////////////////
@@ -152,6 +145,7 @@ CmdGroupPointer AutoManager::getScriptCommand(){
 	CmdGroupPointer cmdGroup = std::unique_ptr<frc::CommandGroup>(new frc::CommandGroup());
 	for(size_t i = 0; i < loadedCommands.size(); ++i){
 		std::string cmd = loadedCommands[i];
+		std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
 		if(registeredCommands.find(cmd) == registeredCommands.end()){
 			frc::DriverStation::ReportError("Script referenced command (command #" + std::to_string(i) + ") \"" + cmd + "\", but no command was registered with that name.");
 		}else{

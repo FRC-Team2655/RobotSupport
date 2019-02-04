@@ -27,11 +27,7 @@ namespace team2655{
 
 class AutoCommand : public frc::Command{
 public:
-	AutoCommand();
-	AutoCommand(std::string commandName, std::vector<std::string> arguments);
-
-protected:
-	std::string commandName;
+	std::string commandName = "";
 	std::vector<std::string> arguments;
 	bool startedFromAutoManager = false;
 };
@@ -45,7 +41,11 @@ AutoCommand *CommandCreator(std::string commandName, std::vector<std::string> ar
 		std::cerr << "WARNING: Creator cannot create command. Given type is not a valid AutoCommand." << std::endl;
 		return nullptr;
 	}
-	return new T(commandName, args);
+	T *t = new T();
+	t->commandName = commandName;
+	t->arguments = args;
+	t->startedFromAutoManager = true;
+	return t;
 }
 
 struct RegisteredCommand{
