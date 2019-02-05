@@ -10,7 +10,7 @@ repositories {
 
 def mavenrepo = rootProject.projectDir.toString() + "/build/maven"
 def vendordepsdir = rootProject.projectDir.toString() + "/build/vendordeps"
-def libraryVersion = "1.1.4"
+def libraryVersion = "1.1.5"
 def publishGroupId = 'org.team2655'
 
 def includeSrcInIncludeRoot = false

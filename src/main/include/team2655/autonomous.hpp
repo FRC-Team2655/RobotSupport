@@ -41,12 +41,19 @@ public:
 	bool isParallel = false;
 };
 
-class AutoCommandGroup : public frc::CommandGroup{
+class GeneratedCommandGroup : public frc::CommandGroup{
 public:
-	AutoCommandGroup(std::vector<GroupAddCommand> cmdsToAdd);
+	GeneratedCommandGroup(std::vector<GroupAddCommand> cmdsToAdd);
 };
 
 class AutoCommand : public frc::Command{
+public:
+	std::string commandName = "";
+	std::vector<std::string> arguments;
+	bool startedFromAutoManager = false;
+};
+
+class AutoCommandGroup : public frc::CommandGroup{
 public:
 	std::string commandName = "";
 	std::vector<std::string> arguments;
@@ -128,7 +135,7 @@ public:
 	 * @param arguments The arguments for the command
 	 * @param pos The position to insert the command at (-1 for the end of the loaded script).
 	 */
-	void addCommand(std::string command, std::vector<std::string> arguments, int pos = -1);
+	void addCommandToScript(std::string command, std::vector<std::string> arguments, int pos = -1);
 
 	/**
 	 * Add a set of commands to the end of autonomous
@@ -136,7 +143,7 @@ public:
 	 * @param arguments The arguments for each command
 	 * @param pos THe position to insert the command at (-1 for the end of the loaded script).
 	 */
-	void addCommands(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments, int pos = -1);
+	void addCommandsToScript(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments, int pos = -1);
 
 	/**
 	 * Remove all loaded commands

@@ -25,7 +25,7 @@ GroupAddCommand::GroupAddCommand(AutoCommand *commandToAdd, bool isParallel) :
 		commandToAdd(commandToAdd), isParallel(isParallel){}
 
 
-AutoCommandGroup::AutoCommandGroup(std::vector<GroupAddCommand> cmdsToAdd) : frc::CommandGroup(){
+GeneratedCommandGroup::GeneratedCommandGroup(std::vector<GroupAddCommand> cmdsToAdd) : frc::CommandGroup(){
 	for(auto &it : cmdsToAdd){
 		if(it.isParallel){
 			AddParallel(it.commandToAdd);
@@ -112,7 +112,7 @@ bool AutoManager::loadScript(std::string fileName){
 	return true;
 }
 
-void AutoManager::addCommand(std::string command, std::vector<std::string> arguments, int pos){
+void AutoManager::addCommandToScript(std::string command, std::vector<std::string> arguments, int pos){
 
 	// Any position beyond the end of the vector is converted to -1 (aka the end)
 	if((pos > ((int)loadedCommands.size())) || pos < -1)
@@ -129,7 +129,7 @@ void AutoManager::addCommand(std::string command, std::vector<std::string> argum
 
 }
 
-void AutoManager::addCommands(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments, int pos){
+void AutoManager::addCommandsToScript(std::vector<std::string> commands, std::vector<std::vector<std::string>> arguments, int pos){
 
 	if(commands.size() != arguments.size()){
 		std::cerr << "AutoManagerError: addCommands: must have same number of commands and arguments" << std::endl;
@@ -172,5 +172,5 @@ CmdGroupPointer AutoManager::getScriptCommand(){
 			std::cout << "Size: " << cmdsToAdd.size() << std::endl;
 		}
 	}
-	return std::unique_ptr<frc::CommandGroup>(new AutoCommandGroup(cmdsToAdd));
+	return std::unique_ptr<frc::CommandGroup>(new GeneratedCommandGroup(cmdsToAdd));
 }
